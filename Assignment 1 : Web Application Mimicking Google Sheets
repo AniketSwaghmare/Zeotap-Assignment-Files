@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheets Clone</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        .spreadsheet {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .spreadsheet td, .spreadsheet th {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            min-width: 80px;
+        }
+        .selected {
+            background-color: #d3e2f5;
+        }
+        .toolbar, .formula-bar {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .suggestions {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            max-width: 200px;
+            display: none;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button class="button is-primary" id="add-row">Add Row</button>
+        <button class="button is-primary" id="add-col">Add Column</button>
+        <button class="button is-primary" id="remove-row">Remove Row</button>
+        <button class="button is-primary" id="remove-col">Remove Column</button>
+    </div>
+    <div class="formula-bar">
+        <input type="text" id="formula-input" placeholder="Enter formula">
+        <div id="formula-suggestions" class="suggestions"></div>
+        <button class="button is-primary" id="apply-formula">Apply</button>
+    </div>
+    <table class="spreadsheet" id="spreadsheet">
+        <thead>
+            <tr id="column-headers">
+                <th></th> <!-- Empty corner cell -->
+            </tr>
+        </thead>
+        <tbody id="spreadsheet-body"></tbody>
+    </table>
+
+    <script>
+        let spreadsheet = [];
+        let selectedCell = null;
+        const formulaInput = document.getElementById('formula-input');
+        const suggestionsBox = document.getElementById('formula-suggestions');
+        
+        const formulaSuggestions = ["=SUM(A1:A10)", "=AVERAGE(B1:B10)", "=MAX(C1:C10)", "=MIN(D1:D10)", "=COUNT(E1:E10)"];
+        
+        formulaInput.addEventListener('focus', () => {
+            suggestionsBox.style.display = 'block';
+            suggestionsBox.innerHTML = formulaSuggestions.map(f => `<div>${f}</div>`).join('');
+        });
+        
+        formulaInput.addEventListener('blur', () => {
+            setTimeout(() => suggestionsBox.style.display = 'none', 200);
+        });
+        
+        suggestionsBox.addEventListener('click', (event) => {
+            if (event.target.tagName === 'DIV') {
+                formulaInput.value = event.target.textContent;
+                suggestionsBox.style.display = 'none';
+            }
+        });
+
+        function initializeSpreadsheet(rows = 10, cols = 5) {
+            for (let i = 0; i < rows; i++) {
+                spreadsheet.push([]);
+                for (let j = 0; j < cols; j++) {
+                    spreadsheet[i].push({ value: '', formula: '', dependencies: [] });
+                }
+            }
+            renderSpreadsheet();
+        }
+
+        function renderSpreadsheet() {
+            let tbody = document.getElementById('spreadsheet-body');
+            let columnHeaders = document.getElementById('column-headers');
+            tbody.innerHTML = '';
+            columnHeaders.innerHTML = '<th></th>';
+            
+            for (let j = 0; j < spreadsheet[0].length; j++) {
+                columnHeaders.innerHTML += `<th>${String.fromCharCode(65 + j)}</th>`;
+            }
+            
+            for (let i = 0; i < spreadsheet.length; i++) {
+                let row = document.createElement('tr');
+                let rowHeader = document.createElement('th');
+                rowHeader.textContent = i + 1;
+                row.appendChild(rowHeader);
+                
+                for (let j = 0; j < spreadsheet[i].length; j++) {
+                    let cell = document.createElement('td');
+                    cell.textContent = spreadsheet[i][j].value;
+                    cell.setAttribute('data-row', i);
+                    cell.setAttribute('data-col', j);
+                    cell.addEventListener('click', () => selectCell(i, j, cell));
+                    row.appendChild(cell);
+                }
+                tbody.appendChild(row);
+            }
+        }
+
+        function selectCell(row, col, cell) {
+            if (selectedCell) selectedCell.classList.remove('selected');
+            selectedCell = cell;
+            selectedCell.classList.add('selected');
+            formulaInput.value = spreadsheet[row][col].formula || spreadsheet[row][col].value;
+        }
+
+        function addRow() {
+            let newRow = [];
+            for (let j = 0; j < spreadsheet[0].length; j++) {
+                newRow.push({ value: '', formula: '', dependencies: [] });
+            }
+            spreadsheet.push(newRow);
+            renderSpreadsheet();
+        }
+
+        function addCol() {
+            for (let i = 0; i < spreadsheet.length; i++) {
+                spreadsheet[i].push({ value: '', formula: '', dependencies: [] });
+            }
+            renderSpreadsheet();
+        }
+
+        function removeRow() {
+            if (spreadsheet.length > 1) {
+                spreadsheet.pop();
+                renderSpreadsheet();
+            }
+        }
+
+        function removeCol() {
+            if (spreadsheet[0].length > 1) {
+                for (let i = 0; i < spreadsheet.length; i++) {
+                    spreadsheet[i].pop();
+                }
+                renderSpreadsheet();
+            }
+        }
+
+        document.getElementById('add-row').addEventListener('click', addRow);
+        document.getElementById('add-col').addEventListener('click', addCol);
+        document.getElementById('remove-row').addEventListener('click', removeRow);
+        document.getElementById('remove-col').addEventListener('click', removeCol);
+        document.getElementById('apply-formula').addEventListener('click', () => {
+            if (selectedCell) {
+                selectedCell.textContent = formulaInput.value;
+            }
+        });
+
+        initializeSpreadsheet();
+    </script>
+</body>
+</html>
